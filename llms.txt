@@ -1,0 +1,38 @@
+# Iris
+
+> Iris is a live-wallpaper engine for Linux and Windows. `iris-daemon` presents stills, Wallpaper Engine packages, scenes, Linux video, and HTML behind the desktop. A Tauri manager applies wallpapers over length-prefixed JSON-RPC and does not render. Version 0.1.0, protocol version 1, Apache License 2.0.
+
+Facts an agent needs before editing or answering:
+
+- Linux presents on a Wayland layer-shell surface and paces frames with `wl_surface.frame`. Windows presents a borderless window reparented onto the desktop WorkerW. macOS has no backend.
+- The manager (`src-tauri`, React) must not link Wayland, wgpu, or FFmpeg. Those stay in the daemon crates.
+- IPC is JSON-RPC 2.0 with a little-endian `u32` length prefix. Frames above 16 MiB are rejected. Linux uses `$XDG_RUNTIME_DIR/iris/iris.sock` or `/tmp/iris-$UID.sock`. Windows uses `\\.\pipe\iris-ipc-{user}`.
+- Video decode is Linux-only (VA-API, then NVDEC, then software). Web wallpapers load `iris://wallpaper/index.html` through wry. Paths that contain `..` or leave the wallpaper root are rejected.
+- Scene uniforms are a packed 344-byte prefix. The full frame uniform, including telemetry, is 552 bytes. Do not insert `vec3` padding.
+- Workspace `rust-version` is 1.80. A full build needs Rust 1.85 or newer because wry 0.57 requires it. Run one Cargo command at a time. `cargo fmt` must not be given `--edition`.
+- `cargo test --offline --lib` does not launch a webview or a compositor. `cargo test --workspace` also builds the Tauri shell.
+
+## Start here
+
+- [README](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/README.md): What Iris is, how to run the daemon and the manager, and the verification commands
+- [Architecture](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/docs/architecture.md): Process split, crate map, frame clocks, uniform layout, and failure isolation
+- [IPC](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/docs/ipc.md): Frame format, methods, wallpaper config, and compatibility rules
+
+## Documentation
+
+- [Building](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/docs/building.md): Rust, Bun, Linux libraries, `.sysdeps`, and the Windows GNU check
+- [Operations](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/docs/operations.md): Endpoints, logs, apply outcomes, power policy, and recovery
+- [Platforms](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/docs/platforms.md): Linux versus Windows support, including video, audio, and desktop placement
+- [Formats](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/docs/formats.md): How image, package, scene, video, and web wallpapers are chosen
+- [Security model](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/docs/security-model.md): Wallpaper-root and IPC boundaries
+- [Testing](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/docs/testing.md): Required commands and what the suite does not cover
+- [Contributing](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/CONTRIBUTING.md): Patch rules, unsafe policy, and the contribution license
+- [License](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/LICENSE): Apache License 2.0
+- [Notice](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/NOTICE): Copyright and third-party lockfile attribution
+
+## Optional
+
+- [Security policy](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/SECURITY.md): Private vulnerability reports and what is in scope
+- [Code of conduct](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/CODE_OF_CONDUCT.md): Contributor Covenant 2.1
+- [Pull request template](https://raw.githubusercontent.com/ayoubzulfiqar/iris/main/.github/PULL_REQUEST_TEMPLATE.md): Checks required before merge
+- [Repository](https://github.com/ayoubzulfiqar/iris): Source tree, issues, and advisories
