@@ -1,0 +1,23 @@
+[package]
+name = "iris-scene"
+description = "Scene graph, particle emitters, and audio-reactive FFT for Iris."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+arc-swap = "1"
+bytemuck.workspace = true
+glam = "0.29"
+iris-core = { path = "../iris-core" }
+iris-pkg = { path = "../iris-pkg" }
+iris-render = { path = "../iris-render" }
+rustfft = "6"
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+wgpu.workspace = true
+
+[target.'cfg(not(windows))'.dependencies]
+cpal = "0.15"
