@@ -1,0 +1,31 @@
+[package]
+name = "iris-web"
+description = "Web wallpaper runtime: iris:// assets, a wry webview, and the Wallpaper Engine JS shim."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+http = "1"
+iris-core = { path = "../iris-core" }
+iris-pkg = { path = "../iris-pkg" }
+iris-telemetry = { path = "../iris-telemetry" }
+percent-encoding = "2"
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+wry = "0.57"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+iris-backend-windows = { path = "../iris-backend-windows" }
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[lints.rust]
+unsafe_code = "deny"
