@@ -1,0 +1,60 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/iris-core",
+    "crates/iris-pkg",
+    "crates/iris-render",
+    "crates/iris-backend-wayland",
+    "crates/iris-backend-windows",
+    "crates/iris-daemon",
+    "crates/iris-video",
+    "crates/iris-scene",
+    "crates/iris-telemetry",
+    "crates/iris-web",
+    "src-tauri",
+]
+# `cargo test` covers the engine crates. `cargo test --workspace` also builds the Tauri shell.
+default-members = [
+    "crates/iris-core",
+    "crates/iris-pkg",
+    "crates/iris-render",
+    "crates/iris-backend-wayland",
+    "crates/iris-backend-windows",
+    "crates/iris-daemon",
+    "crates/iris-video",
+    "crates/iris-scene",
+    "crates/iris-telemetry",
+    "crates/iris-web",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+publish = false
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+lz4_flex = "0.11"
+bytemuck = { version = "1", features = ["derive"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp"] }
+pollster = "0.4"
+raw-window-handle = "0.6"
+wgpu = "23"
+calloop = "0.13"
+smithay-client-toolkit = "0.19"
+wayland-client = "0.31"
+wayland-protocols = "0.32"
+
+# Release profile matches the Tauri size guideline:
+# https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
