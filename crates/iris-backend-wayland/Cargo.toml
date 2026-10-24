@@ -1,0 +1,21 @@
+[package]
+name = "iris-backend-wayland"
+description = "Wayland layer-shell surfaces for Iris wallpapers."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+tracing.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+calloop.workspace = true
+raw-window-handle.workspace = true
+smithay-client-toolkit.workspace = true
+wayland-client = { workspace = true, features = ["system"] }
+wayland-protocols = { workspace = true, features = ["client", "staging"] }
+
+[lints.rust]
+unsafe_code = "deny"
