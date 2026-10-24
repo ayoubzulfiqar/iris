@@ -1,0 +1,34 @@
+[package]
+name = "iris-daemon"
+description = "Iris wallpaper daemon: IPC server, monitor lifecycle, and the frame loop."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "iris-daemon"
+path = "src/main.rs"
+
+[dependencies]
+image.workspace = true
+iris-core = { path = "../iris-core" }
+iris-pkg = { path = "../iris-pkg" }
+iris-render = { path = "../iris-render" }
+iris-scene = { path = "../iris-scene" }
+iris-telemetry = { path = "../iris-telemetry" }
+iris-web = { path = "../iris-web" }
+thiserror.workspace = true
+tracing.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+calloop.workspace = true
+iris-backend-wayland = { path = "../iris-backend-wayland" }
+iris-video = { path = "../iris-video" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+iris-backend-windows = { path = "../iris-backend-windows" }
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "time"] }
+
+[lints.rust]
+unsafe_code = "forbid"
