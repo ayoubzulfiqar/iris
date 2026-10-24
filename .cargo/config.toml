@@ -1,0 +1,4 @@
+[env]
+# Points at headers extracted next to the repo when the distro FFmpeg package
+# ships libraries without a -devel install. A missing directory is ignored.
+PKG_CONFIG_PATH = { value = ".sysdeps/pkgconfig", relative = true }
