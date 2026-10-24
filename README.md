@@ -88,6 +88,7 @@ compositor. `cargo test --workspace` also builds the Tauri shell.
 | [Contributing](CONTRIBUTING.md) | Prepare a patch |
 | [Security policy](SECURITY.md) | Report a vulnerability in private |
 | [Code of conduct](CODE_OF_CONDUCT.md) | See how the project handles conduct reports |
+| [llms.txt](llms.txt) | Curated map of these docs for agents and answer engines |
 
 ## Protocol at a glance
 
