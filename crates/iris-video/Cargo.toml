@@ -1,0 +1,15 @@
+[package]
+name = "iris-video"
+description = "Video decode for Iris: hardware acceleration, a frame ring, and PCM audio."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+tracing.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+cpal = "0.15"
+ffmpeg-next = "9.0"
