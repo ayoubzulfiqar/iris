@@ -1,0 +1,65 @@
+name: Bug report
+description: A defect in the daemon, the manager, or a wallpaper loader.
+title: "[bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. Security reports go to a
+        [private advisory](https://github.com/ayoubzulfiqar/iris/security/advisories/new),
+        not here.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what the process did instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - iris-daemon (Linux)
+        - iris-daemon (Windows)
+        - Manager UI
+        - IPC / client
+        - Still image or package
+        - Scene
+        - Video
+        - Web wallpaper
+        - Telemetry or power policy
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or version
+      description: Output of `git rev-parse --short HEAD`, or the release tag.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, compositor or shell, GPU, and the Rust toolchain (`rustc --version`).
+      placeholder: |
+        Fedora 42, Sway, AMD GPU, rustc 1.85
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A short sequence another person can follow. Attach a minimal wallpaper only if you can share it.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Daemon stderr and, when the manager is involved, the relevant UI error. Redact usernames and file paths you do not want public.
+      render: text
