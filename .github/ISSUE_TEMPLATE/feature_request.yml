@@ -1,0 +1,47 @@
+name: Feature request
+description: A change to wallpaper playback, the manager, or the IPC contract.
+title: "[feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read [the architecture](https://github.com/ayoubzulfiqar/iris/blob/main/docs/architecture.md)
+        before asking for a feature that crosses the daemon and the manager.
+        Protocol additions have to stay compatible with `PROTOCOL_VERSION`.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Who is blocked, and what they cannot do today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The behavior you want, including Linux and Windows if both are involved.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Wallpaper formats
+        - Rendering
+        - Video
+        - Scene and audio
+        - Web runtime
+        - Power and fullscreen policy
+        - IPC protocol
+        - Manager UI
+        - Packaging and build
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Other approaches you considered, and why they are weaker.
