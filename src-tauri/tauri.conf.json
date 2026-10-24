@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "iris",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "Iris",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 880,
+        "minHeight": 600,
+        "center": true
       }
     ],
     "security": {
