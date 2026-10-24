@@ -1,0 +1,17 @@
+[package]
+name = "iris-render"
+description = "wgpu wallpaper renderer: swapchain, uniforms, and textured-quad drawing."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+iris-pkg = { path = "../iris-pkg" }
+pollster.workspace = true
+raw-window-handle.workspace = true
+thiserror.workspace = true
+wgpu.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"
