@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Rust
+/target
+# Local FFmpeg/ALSA headers used to link the system libraries. Not source.
+/.sysdeps/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
