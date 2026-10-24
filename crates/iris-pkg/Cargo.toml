@@ -1,0 +1,16 @@
+[package]
+name = "iris-pkg"
+description = "Wallpaper Engine .pkg archive reader, .tex decoder, and scene JSON schema."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+lz4_flex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"
