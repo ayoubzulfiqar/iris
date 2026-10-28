@@ -1,0 +1,7 @@
+{
+  "uuid": "iris-wallpaper@iris",
+  "name": "Iris Wallpaper",
+  "description": "Places Iris video and GIF windows behind the desktop icons and lets clicks pass through.",
+  "shell-version": ["49", "50", "51"],
+  "url": "https://github.com/ayoubzulfiqar/iris"
+}
