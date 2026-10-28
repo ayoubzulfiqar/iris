@@ -11,6 +11,8 @@
 mod app;
 #[cfg(target_os = "windows")]
 mod app_windows;
+#[cfg(target_os = "linux")]
+mod desktop_bg;
 mod error;
 mod load;
 mod loader;
