@@ -53,7 +53,13 @@ bun run tauri dev
 ```
 
 The manager starts a daemon itself when the socket or pipe is down. Closing
-the window hides it. Quit Iris shuts the daemon down.
+the window hides it. Quit Manager leaves the daemon running. Stop Wallpaper
+clears the assignment.
+
+On GNOME, which has no `zwlr_layer_shell_v1`, a still image uses the desktop
+background setting. Video and GIF wait for the `iris-wallpaper@iris` Shell
+extension described in [docs/platforms.md](docs/platforms.md). Iris does not
+open a borderless window in place of that extension.
 
 Linux listens on `$XDG_RUNTIME_DIR/iris/iris.sock`, or `/tmp/iris-$UID.sock`
 when `XDG_RUNTIME_DIR` is unset. Windows listens on `\\.\pipe\iris-ipc-{user}`.
