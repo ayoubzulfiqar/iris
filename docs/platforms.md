@@ -18,10 +18,22 @@ daemon returns an unsupported error there.
 | IPC | Unix socket | Named pipe |
 | Checked target | `x86_64-unknown-linux-gnu` | `x86_64-pc-windows-gnu` |
 
-A compositor without `zwlr_layer_shell_v1` cannot host a GPU wallpaper. A web
-wallpaper still opens a borderless GTK window with the desktop type hint,
-skip taskbar, and keep-below. On Wayland that hint is advisory. The compositor
-chooses the position.
+A compositor without `zwlr_layer_shell_v1` cannot host a GPU wallpaper. GNOME
+is in that group. A still image is applied with `gsettings` on
+`org.gnome.desktop.background`, including the dark-mode URI. Clear restores
+the values saved in `$XDG_STATE_HOME/iris/desktop-background.json`.
+
+Video and GIF are not opened as a borderless window. The daemon stages the
+file and creates a GTK surface titled `IrisWallpaper:x,y,w,h` only after the
+Shell extension `gnome-extension/iris-wallpaper@iris` has written
+`background-group-1` to `$XDG_STATE_HOME/iris/shell-extension`. The extension
+moves that surface into the Shell background group, behind other windows.
+Shell imports an extension once per login, so a newly installed copy stays
+idle until the next login. Until the stamp file exists, apply returns
+unsupported and does not create a window. Scenes still need layer-shell.
+
+An HTML wallpaper (`type: web`) still opens a GTK webview. On Wayland the
+desktop type hint is advisory and the compositor chooses the position.
 
 A Windows shell that never creates the wallpaper WorkerW logs an injection
 warning. The borderless window remains. `embed_window` reports the same miss
