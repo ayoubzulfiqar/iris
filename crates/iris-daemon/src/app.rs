@@ -137,6 +137,11 @@ struct App {
     webs: HashMap<u32, crate::loader::WebSlot>,
     web_broadcast: Option<WallpaperConfig>,
     web_timer: bool,
+    /// Still image shown through the desktop background when layer-shell is absent.
+    desktop: Option<crate::desktop_bg::DesktopBackground>,
+    /// The `iris-daemon` binary sets this. Library tests leave it off.
+    restore_wallpaper: bool,
+    restored: bool,
 }
 
 struct WebMonitor {
@@ -247,6 +252,9 @@ pub(crate) fn serve(config: iris_core::DaemonConfig) -> Result<(), Error> {
         webs: HashMap::new(),
         web_broadcast: None,
         web_timer: false,
+        desktop: None,
+        restore_wallpaper: std::env::var_os("IRIS_RESTORE_WALLPAPER").is_some(),
+        restored: false,
     };
     app.arm_policy_timer();
     let source = Generic::new(listener, Interest::READ, Mode::Level);
@@ -265,6 +273,15 @@ pub(crate) fn serve(config: iris_core::DaemonConfig) -> Result<(), Error> {
         return Err(Error::Loop(err.error.to_string()));
     }
     app.socket_path = Some(path);
+    if app.restore_wallpaper {
+        let timer = Timer::from_duration(Duration::from_millis(200));
+        if let Err(err) = app.handle.insert_source(timer, |_instant, _meta, app| {
+            app.restore_once();
+            TimeoutAction::Drop
+        }) {
+            tracing::warn!("restore wallpaper timer: {}", err.error);
+        }
+    }
     let run_result = event_loop.run(None::<Duration>, &mut app, |app| {
         app.drain(DRAIN_CAP);
         if app.any_outgoing() && !app.write_armed {
@@ -311,6 +328,26 @@ fn busy() -> Error {
     Error::Wayland(iris_backend_wayland::Error::Dispatch(
         "wayland session is busy".to_owned(),
     ))
+}
+
+fn image_path(config: &WallpaperConfig) -> Option<&std::path::Path> {
+    match &config.source {
+        iris_core::WallpaperSource::Image { path } => Some(path.as_path()),
+        _ => None,
+    }
+}
+
+fn video_path(config: &WallpaperConfig) -> Option<&std::path::Path> {
+    match &config.source {
+        iris_core::WallpaperSource::Video { path } => Some(path.as_path()),
+        _ => None,
+    }
+}
+
+fn is_gif(path: &std::path::Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("gif"))
 }
 
 fn map_fit(mode: ScaleMode) -> Fit {
@@ -681,6 +718,19 @@ impl App {
                 },
             ));
         }
+        if let Some(slot) = &self.desktop {
+            rows.push((
+                slot.index,
+                WallpaperStatus {
+                    id: slot.config.id.clone(),
+                    target: MonitorTarget::Connector {
+                        name: slot.connector.clone(),
+                    },
+                    state: slot.state,
+                    message: slot.message.clone(),
+                },
+            ));
+        }
         rows.sort_by_key(|(index, _)| *index);
         ResponseBody::Status {
             running: self.running,
@@ -708,6 +758,14 @@ impl App {
             session.snapshots()
         };
         let targets = resolve_apply(&snapshots, &config.target)?;
+        let layer_shell = {
+            let session = self.session_rc()?;
+            let session = session.try_borrow().map_err(|_| busy())?;
+            session.has_layer_shell()
+        };
+        if !layer_shell {
+            return self.apply_desktop_background(config, &targets);
+        }
         if matches!(config.target, MonitorTarget::All) {
             self.web_broadcast = None;
             self.webs.clear();
@@ -731,8 +789,142 @@ impl App {
         self.drain(DRAIN_CAP);
         match failure {
             Some(err) => Err(err),
-            None => Ok(ResponseBody::Ack),
+            None => {
+                self.remember(&config);
+                Ok(ResponseBody::Ack)
+            }
         }
+    }
+
+    fn restore_once(&mut self) {
+        if self.restored {
+            return;
+        }
+        self.restored = true;
+        if !self.restore_wallpaper {
+            return;
+        }
+        let Some(config) = crate::desktop_bg::load_active() else {
+            return;
+        };
+        tracing::info!("restoring wallpaper {}", config.id);
+        if let Err(err) = self.apply(config) {
+            tracing::warn!("restore wallpaper: {err}");
+        }
+    }
+
+    fn remember(&self, config: &WallpaperConfig) {
+        if let Err(err) = crate::desktop_bg::save_active(config) {
+            tracing::warn!("save wallpaper: {err}");
+        }
+    }
+
+    fn forget_if_idle(&self) {
+        if self.slots.is_empty() && self.webs.is_empty() && self.desktop.is_none() {
+            crate::desktop_bg::forget_active();
+        }
+    }
+
+    fn apply_desktop_background(
+        &mut self,
+        config: WallpaperConfig,
+        targets: &[OutputSnapshot],
+    ) -> Result<ResponseBody, Error> {
+        if let Some(path) = video_path(&config).map(|path| path.to_path_buf()) {
+            let project = if is_gif(&path) {
+                crate::desktop_bg::gif_project(&path, &config)?
+            } else {
+                crate::desktop_bg::video_project(&path, &config)?
+            };
+            return self.play_animated(config, project);
+        }
+        if let Some(path) = image_path(&config).map(|path| path.to_path_buf()) {
+            if is_gif(&path) {
+                let project = crate::desktop_bg::gif_project(&path, &config)?;
+                return self.play_animated(config, project);
+            }
+            return self.apply_still_background(config, &path, targets);
+        }
+        Err(Error::Unsupported(
+            "this desktop cannot draw scenes behind the icons. Images, video, and GIF can."
+                .to_owned(),
+        ))
+    }
+
+    /// Video and GIF play in a desktop window. The Iris GNOME extension lowers
+    /// that window behind other windows. The daemon keeps it up after the
+    /// manager process exits.
+    fn play_animated(
+        &mut self,
+        config: WallpaperConfig,
+        project: iris_web::WebProject,
+    ) -> Result<ResponseBody, Error> {
+        if !crate::desktop_bg::shell_extension_ready() {
+            return Err(Error::Unsupported(
+                "GNOME is still running the old wallpaper extension, so a video would only open as a borderless window. Log out and back in once. Iris will then place the video on the desktop background.".to_owned(),
+            ));
+        }
+        self.clear_desktop()?;
+        let result = self.apply_web(config.clone(), project)?;
+        let note = "Playing as the desktop wallpaper. Stop Wallpaper in the Iris tray removes it.";
+        for slot in self.webs.values_mut() {
+            if slot.state == RunState::Playing {
+                slot.message = Some(note.to_owned());
+            }
+        }
+        self.remember(&config);
+        Ok(result)
+    }
+
+    fn apply_still_background(
+        &mut self,
+        config: WallpaperConfig,
+        path: &std::path::Path,
+        targets: &[OutputSnapshot],
+    ) -> Result<ResponseBody, Error> {
+        self.web_broadcast = None;
+        self.webs.clear();
+        let output = targets
+            .iter()
+            .find(|snapshot| snapshot.primary)
+            .or_else(|| targets.first());
+        let (index, connector, primary) = match output {
+            Some(snapshot) => (snapshot.index, snapshot.connector.clone(), snapshot.primary),
+            None => (0, "desktop".to_owned(), true),
+        };
+        crate::desktop_bg::apply_image(path, config.scale)?;
+        self.desktop = Some(crate::desktop_bg::DesktopBackground {
+            index,
+            connector,
+            primary,
+            config: config.clone(),
+            state: RunState::Playing,
+            message: Some("Set as the GNOME desktop background.".to_owned()),
+        });
+        self.remember(&config);
+        Ok(ResponseBody::Ack)
+    }
+
+    fn desktop_matches(&self, target: &MonitorTarget) -> bool {
+        let Some(slot) = &self.desktop else {
+            return false;
+        };
+        match target {
+            MonitorTarget::All => true,
+            MonitorTarget::Primary => slot.primary,
+            MonitorTarget::Index { index } => slot.index == *index,
+            MonitorTarget::Connector { name } => slot.connector == *name,
+            _ => false,
+        }
+    }
+
+    fn clear_desktop(&mut self) -> Result<(), Error> {
+        if self.desktop.is_none() {
+            return Ok(());
+        }
+        crate::desktop_bg::restore()?;
+        self.desktop = None;
+        Ok(())
     }
 
     fn apply_web(
@@ -872,6 +1064,19 @@ impl App {
     /// GTK and webview script injection. This timer does not replace `wl_surface.frame`.
     fn pump_webs(&mut self) {
         iris_web::pump();
+        let closed: Vec<u32> = self
+            .webs
+            .iter()
+            .filter(|(_, slot)| slot.instance.was_closed())
+            .map(|(id, _)| *id)
+            .collect();
+        if !closed.is_empty() {
+            for id in closed {
+                self.webs.remove(&id);
+            }
+            self.web_broadcast = None;
+            self.forget_if_idle();
+        }
         let playing = self
             .webs
             .values()
@@ -1104,13 +1309,24 @@ impl App {
             self.web_broadcast = None;
             self.drop_slots(self.slots.keys().copied().collect());
             self.webs.clear();
+            self.clear_desktop()?;
+            self.forget_if_idle();
             return Ok(ResponseBody::Ack);
         }
-        let (gpu, web) = self.control_sets(Some(target))?;
+        let desktop_hit = self.desktop_matches(&target);
+        let (gpu, web) = match self.control_sets(Some(target)) {
+            Ok(pair) => pair,
+            Err(Error::InvalidTarget(_)) if desktop_hit => (Vec::new(), Vec::new()),
+            Err(err) => return Err(err),
+        };
         self.drop_slots(gpu);
         for id in web {
             self.webs.remove(&id);
         }
+        if desktop_hit {
+            self.clear_desktop()?;
+        }
+        self.forget_if_idle();
         Ok(ResponseBody::Ack)
     }
 
