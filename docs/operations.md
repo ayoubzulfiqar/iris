@@ -15,8 +15,19 @@ The manager starts the daemon when the endpoint is down. It retries for about
 error in the tray. The daemon is spawned in its own process group with
 `kill_on_drop(false)`, so hiding or closing the manager does not signal it.
 
-Quit Iris sends `shutdown` over IPC and then exits the manager. Shutdown
-clears wallpaper slots and, on Linux, removes the socket file.
+Quit Manager exits the tray process and leaves the daemon running. Stop
+Wallpaper sends `clear_wallpaper` for every output. The `shutdown` IPC method
+still clears wallpaper slots and, on Linux, removes the socket file. The tray
+does not send it.
+
+The `iris-daemon` binary sets `IRIS_RESTORE_WALLPAPER` and, about 200 ms after
+the socket opens, reapplies `$XDG_STATE_HOME/iris/active-wallpaper.json` when
+that file is present. Library tests call `run_with` and do not set the
+variable, so they do not restore a wallpaper. Clear removes the file when no
+assignment remains.
+
+`packaging/iris-daemon.service` is an optional user unit for
+`graphical-session.target`. The build does not install it.
 
 ## Endpoints
 
