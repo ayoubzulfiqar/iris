@@ -4,7 +4,7 @@
 
 Facts an agent needs before editing or answering:
 
-- Linux presents on a Wayland layer-shell surface and paces frames with `wl_surface.frame`. Windows presents a borderless window reparented onto the desktop WorkerW. macOS has no backend.
+- Linux presents GPU wallpapers on a Wayland layer-shell surface and paces frames with `wl_surface.frame`. Without `zwlr_layer_shell_v1`, still images use the GNOME background setting. Video and GIF are placed by the `iris-wallpaper@iris` Shell extension, and apply does not open a borderless window until that extension has loaded in the current login. Windows presents a borderless window reparented onto the desktop WorkerW. macOS has no backend.
 - The manager (`src-tauri`, React) must not link Wayland, wgpu, or FFmpeg. Those stay in the daemon crates.
 - IPC is JSON-RPC 2.0 with a little-endian `u32` length prefix. Frames above 16 MiB are rejected. Linux uses `$XDG_RUNTIME_DIR/iris/iris.sock` or `/tmp/iris-$UID.sock`. Windows uses `\\.\pipe\iris-ipc-{user}`.
 - Video decode is Linux-only (VA-API, then NVDEC, then software). Web wallpapers load `iris://wallpaper/index.html` through wry. Paths that contain `..` or leave the wallpaper root are rejected.
