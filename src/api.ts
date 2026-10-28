@@ -7,6 +7,7 @@ import type {
   MonitorTarget,
   TelemetryReport,
   WallpaperConfig,
+  ImportedMedia,
 } from "./types";
 
 export function errorText(err: unknown): string {
@@ -54,6 +55,23 @@ export function listLibrary(path: string): Promise<LibraryListing> {
   return invoke<LibraryListing>("list_library", { path });
 }
 
+export function defaultLibraryPath(): Promise<string> {
+  return invoke<string>("default_library_path");
+}
+
+export interface LibraryThumb {
+  path: string;
+  preview_data_url: string | null;
+}
+
+export function libraryThumbnails(paths: string[]): Promise<LibraryThumb[]> {
+  return invoke<LibraryThumb[]>("library_thumbnails", { paths });
+}
+
 export function ensureDaemon(): Promise<void> {
   return invoke("ensure_daemon");
+}
+
+export function importMediaUrl(url: string): Promise<ImportedMedia> {
+  return invoke<ImportedMedia>("import_media_url", { url });
 }
