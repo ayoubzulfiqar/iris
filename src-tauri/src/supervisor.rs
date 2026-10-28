@@ -1,8 +1,8 @@
 //! Start `iris-daemon` when the manager cannot reach its socket.
 //!
 //! The daemon is spawned with `kill_on_drop(false)` and its own process group,
-//! so closing the manager does not signal it. A later Quit command asks the
-//! daemon to shut down over IPC.
+//! so closing the manager does not signal it. Quit Manager leaves it running.
+//! Stop Wallpaper clears the assignment over IPC.
 
 use std::path::PathBuf;
 use std::time::Duration;
