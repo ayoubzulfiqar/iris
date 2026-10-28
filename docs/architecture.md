@@ -39,8 +39,10 @@ flowchart TB
 | `iris-daemon` | Sockets or pipes, wallpaper slots, GPU surfaces, video decode, webviews, telemetry sampling | The React UI |
 | `iris` (Tauri) | Tray, window, IPC client, package inspection for the library | Wayland, wgpu, FFmpeg, WorkerW |
 
-Closing the manager hides the window. The daemon keeps presenting. Quit Iris
-sends `shutdown` and then exits.
+Closing the manager hides the window. The daemon keeps presenting. Quit
+Manager exits the tray process and leaves the daemon running. Stop Wallpaper
+clears every assignment. The `shutdown` IPC method still exists; the tray
+does not send it.
 
 ## Crates
 
