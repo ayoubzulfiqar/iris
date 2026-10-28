@@ -34,9 +34,17 @@ export function WallpaperDropzone({ onPaths }: WallpaperDropzoneProps) {
   }, [onPaths]);
 
   return (
-    <div className={hovering ? "dropzone hovering" : "dropzone"}>
-      <strong>Drop a wallpaper</strong>
-      <p>A .pkg archive, an unpacked scene folder, or a still image.</p>
+    <div
+      className={
+        hovering
+          ? "rounded-xl border border-primary bg-accent px-4 py-6 text-center shadow-sm"
+          : "rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center"
+      }
+    >
+      <p className="text-sm font-medium">Drop a wallpaper</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Package, scene folder, image, or video. It is added to the library.
+      </p>
     </div>
   );
 }
