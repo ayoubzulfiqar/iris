@@ -3,6 +3,7 @@
 
 mod client;
 mod commands;
+mod import_url;
 mod supervisor;
 
 use std::sync::Arc;
@@ -14,7 +15,7 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{Manager, RunEvent, WindowEvent};
 
-/// Hide the window on close, and leave the process up until Quit Iris.
+/// Hide the window on close. Quit Manager leaves the wallpaper daemon running.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let client = DaemonClient::local();
@@ -32,9 +33,12 @@ pub fn run() {
             commands::set_paused_command,
             commands::inspect_wallpaper_package,
             commands::list_library,
+            commands::default_library_path,
+            commands::library_thumbnails,
             commands::ensure_daemon,
             commands::set_pointer_command,
             commands::get_telemetry_command,
+            import_url::import_media_url,
         ])
         .setup(move |app| {
             install_tray(app, client, quitting)?;
@@ -80,9 +84,13 @@ fn install_tray(
     let pause = MenuItem::with_id(app, "pause-all", "Pause All", true, None::<&str>)?;
     let resume = MenuItem::with_id(app, "resume-all", "Resume All", true, None::<&str>)?;
     let open = MenuItem::with_id(app, "open", "Open Manager", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit Iris", true, None::<&str>)?;
+    let stop = MenuItem::with_id(app, "stop-wallpaper", "Stop Wallpaper", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Manager", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&status, &separator, &pause, &resume, &open, &quit])?;
+    let menu = Menu::with_items(
+        app,
+        &[&status, &separator, &pause, &resume, &open, &stop, &quit],
+    )?;
 
     let menu_client = client.clone();
     let menu_quitting = Arc::clone(&quitting);
@@ -107,16 +115,17 @@ fn install_tray(
                 });
             }
             "open" => show_main(app),
+            "stop-wallpaper" => {
+                let client = menu_client.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(err) = client.clear_wallpaper(MonitorTarget::All).await {
+                        tracing::warn!("stop wallpaper: {err}");
+                    }
+                });
+            }
             "quit" => {
                 menu_quitting.store(true, Ordering::SeqCst);
-                let client = menu_client.clone();
-                let app = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(err) = client.shutdown_daemon().await {
-                        tracing::warn!("daemon shutdown: {err}");
-                    }
-                    app.exit(0);
-                });
+                app.exit(0);
             }
             _ => {}
         });
