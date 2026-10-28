@@ -98,6 +98,14 @@ impl Session {
         self.state.snapshots()
     }
 
+    /// Whether the compositor advertised `zwlr_layer_shell_v1`.
+    ///
+    /// GNOME does not. Callers that only have a still image can use the
+    /// desktop background instead of a layer surface.
+    pub fn has_layer_shell(&self) -> bool {
+        self.state.layer_shell.is_some()
+    }
+
     /// Create a background layer on `output_id` and wait until it configures.
     ///
     /// The initial commits carry no buffer. The caller uploads and presents
