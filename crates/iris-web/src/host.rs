@@ -1,7 +1,10 @@
 //! Platform window around one wry webview.
 //!
-//! Linux pins a borderless desktop-type GTK window and pumps it with
-//! `gtk::main_iteration_do`. That pump is not the Wayland frame clock.
+//! Linux opens a normal GTK window and pumps it with `gtk::main_iteration_do`.
+//! That pump is not the Wayland frame clock. The window has a close button.
+//! Closing it hides the window and tells the daemon to drop the wallpaper.
+//! The title starts with `IrisWallpaper:` so a GNOME Shell extension can lower
+//! it behind every other window after the next login.
 //! Windows builds the webview as a child of a borderless window and reparents
 //! the child HWND with [`iris_backend_windows::embed_window`].
 //!
@@ -39,6 +42,7 @@ mod platform {
         /// Dropped after the view so the custom protocol stays registered.
         #[allow(dead_code)]
         context: wry::WebContext,
+        closed: Arc<AtomicBool>,
     }
 
     pub fn open(project: &WebProject, bounds: Bounds) -> Result<Host, String> {
@@ -78,9 +82,16 @@ mod platform {
         }
 
         pub fn place(&self, bounds: Bounds) {
+            if self.closed() {
+                return;
+            }
             self.window
                 .resize(bounds.width.max(1) as i32, bounds.height.max(1) as i32);
             self.window.move_(bounds.x, bounds.y);
+        }
+
+        pub fn closed(&self) -> bool {
+            self.closed.load(Ordering::SeqCst)
         }
     }
 
@@ -89,10 +100,20 @@ mod platform {
             std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
             std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
         }
+        // The dmabuf renderer paints a blank white view on GNOME's compositor.
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
         let window = desktop_window(bounds)?;
+        let closed = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&closed);
+        window.connect_delete_event(move |window, _| {
+            flag.store(true, Ordering::SeqCst);
+            window.hide();
+            gtk::glib::Propagation::Stop
+        });
         let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
         window.add(&content);
         window.show_all();
+        pass_clicks_through(&window);
         let mut context = wry::WebContext::new(Some(profile_dir()?));
         let root = Arc::clone(&project.root);
         let entry = project.entry_url.clone();
@@ -109,6 +130,7 @@ mod platform {
                     view,
                     window,
                     context,
+                    closed,
                 })
             }
             Ok(Err(err)) => Err(err),
@@ -122,17 +144,44 @@ mod platform {
         }
         GTK_READY.store(true, Ordering::SeqCst);
         let window = gtk::Window::new(gtk::WindowType::Toplevel);
-        window.set_title("Iris Wallpaper");
+        let title = format!(
+            "IrisWallpaper:{},{},{},{}",
+            bounds.x,
+            bounds.y,
+            bounds.width.max(1),
+            bounds.height.max(1)
+        );
+        window.set_title(&title);
+        // WebKit replaces the title with the page URL. The Shell extension
+        // only recognises the IrisWallpaper prefix, so put the title back.
+        let locked = title.clone();
+        window.connect_notify(Some("title"), move |window, _| {
+            let current = window.title().map(|text| text.to_string()).unwrap_or_default();
+            if current != locked {
+                window.set_title(&locked);
+            }
+        });
         window.set_decorated(false);
         window.set_resizable(false);
+        window.set_deletable(true);
         window.set_keep_below(true);
         window.set_skip_taskbar_hint(true);
         window.set_skip_pager_hint(true);
         window.set_accept_focus(false);
+        window.set_can_focus(false);
+        window.set_focus_on_map(false);
         window.set_type_hint(gtk::gdk::WindowTypeHint::Desktop);
+        window.set_role("iris-wallpaper");
         window.set_default_size(bounds.width.max(1) as i32, bounds.height.max(1) as i32);
         window.move_(bounds.x, bounds.y);
+        window.connect_realize(|window| pass_clicks_through(window));
         Ok(window)
+    }
+
+    /// Clicks fall through to windows and desktop icons above this surface.
+    fn pass_clicks_through(window: &gtk::Window) {
+        let empty = cairo::Region::create();
+        window.input_shape_combine_region(Some(&empty));
     }
 }
 
@@ -152,6 +201,12 @@ mod platform {
         #[allow(dead_code)]
         context: wry::WebContext,
         hwnd: isize,
+    }
+
+    impl Host {
+        pub fn closed(&self) -> bool {
+            false
+        }
     }
 
     pub fn open(project: &WebProject, bounds: Bounds) -> Result<Host, String> {
@@ -296,6 +351,10 @@ mod platform {
         pub fn eval(&self, _script: &str) {}
 
         pub fn place(&self, _bounds: Bounds) {}
+
+        pub fn closed(&self) -> bool {
+            false
+        }
     }
 }
 
