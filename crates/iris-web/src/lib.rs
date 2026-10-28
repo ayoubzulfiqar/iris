@@ -90,6 +90,11 @@ impl WebWallpaperInstance {
         self.launched
     }
 
+    /// The user closed the desktop window.
+    pub fn was_closed(&self) -> bool {
+        self.host.as_ref().is_some_and(|host| host.closed())
+    }
+
     /// Why the webview did not start.
     pub fn warning(&self) -> Option<&str> {
         self.warning.as_deref()
