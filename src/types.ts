@@ -47,6 +47,13 @@ export interface WallpaperConfig {
   scale: ScaleMode;
   pause_on_fullscreen: boolean;
   pause_on_game: boolean;
+  battery_fps?: number | null;
+}
+
+export interface ImportedMedia {
+  path: string;
+  kind: string;
+  bytes: number;
 }
 
 export interface DaemonStatus {
