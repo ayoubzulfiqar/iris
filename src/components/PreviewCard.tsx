@@ -7,25 +7,35 @@ interface PreviewCardProps {
 export function PreviewCard({ inspection }: PreviewCardProps) {
   if (!inspection) {
     return (
-      <div className="preview empty-preview">
-        <p>Select a wallpaper to see its title, description, and preview.</p>
+      <div className="rounded-xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+        Select a wallpaper to see its title, description, and preview.
       </div>
     );
   }
 
   return (
-    <article className="preview">
-      <div className="preview-frame">
+    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex aspect-video items-center justify-center bg-muted">
         {inspection.preview_data_url ? (
-          <img src={inspection.preview_data_url} alt={inspection.title} />
+          <img
+            src={inspection.preview_data_url}
+            alt={inspection.title}
+            className="h-full w-full object-cover"
+          />
         ) : (
-          <span className="preview-missing">No preview</span>
+          <span className="text-sm text-muted-foreground">No preview</span>
         )}
       </div>
-      <p className="kind">{inspection.kind}</p>
-      <h2>{inspection.title}</h2>
-      {inspection.description ? <p className="description">{inspection.description}</p> : null}
-      <p className="path">{inspection.path}</p>
+      <div className="space-y-2 p-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {inspection.kind}
+        </p>
+        <h2 className="text-lg font-semibold">{inspection.title}</h2>
+        {inspection.description ? (
+          <p className="text-sm text-muted-foreground">{inspection.description}</p>
+        ) : null}
+        <p className="break-all font-mono text-xs text-muted-foreground">{inspection.path}</p>
+      </div>
     </article>
   );
 }
