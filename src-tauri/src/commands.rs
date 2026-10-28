@@ -174,6 +174,76 @@ pub fn list_library(path: String) -> Result<LibraryListing, String> {
     list_path(Path::new(&path))
 }
 
+/// One small preview for a library card. Missing when the file is not an image or is too large.
+#[derive(Debug, Clone, Serialize)]
+pub struct LibraryThumb {
+    /// Absolute path that was requested.
+    pub path: String,
+    /// PNG data URL at most 256 px on the long edge.
+    pub preview_data_url: Option<String>,
+}
+
+/// Decode library images one at a time into small previews.
+///
+/// Full-size wallpapers are not sent to the window. Files over 24 MiB, and
+/// decodes that would allocate more than 32 MiB, stay as a plain card.
+#[tauri::command]
+pub fn library_thumbnails(paths: Vec<String>) -> Vec<LibraryThumb> {
+    const BATCH: usize = 48;
+    const FILE_CAP: u64 = 24 * 1024 * 1024;
+    paths
+        .into_iter()
+        .take(BATCH)
+        .map(|path| {
+            let preview = thumb_for(Path::new(&path), FILE_CAP);
+            LibraryThumb {
+                path,
+                preview_data_url: preview,
+            }
+        })
+        .collect()
+}
+
+fn thumb_for(path: &Path, file_cap: u64) -> Option<String> {
+    if file_kind(path) != Some("image") {
+        return None;
+    }
+    let meta = fs::symlink_metadata(path).ok()?;
+    if !meta.file_type().is_file() || meta.len() > file_cap {
+        return None;
+    }
+    let image = decode_capped(path)?;
+    encode_data_url(&image)
+}
+
+fn decode_capped(path: &Path) -> Option<image::DynamicImage> {
+    let mut reader = image::ImageReader::open(path).ok()?;
+    reader = reader.with_guessed_format().ok()?;
+    let mut limits = image::Limits::default();
+    limits.max_alloc = Some(32 * 1024 * 1024);
+    reader.limits(limits);
+    reader.decode().ok()
+}
+
+/// Folder the library should open when the user has not chosen one.
+#[tauri::command]
+pub fn default_library_path() -> String {
+    let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else {
+        return String::new();
+    };
+    for candidate in [
+        home.join("Wallpaper"),
+        home.join("Pictures"),
+        home.join("Pictures").join("Iris"),
+        home,
+    ] {
+        if candidate.is_dir() {
+            return candidate.display().to_string();
+        }
+    }
+    String::new()
+}
+
 /// Ping the daemon and spawn it when the socket is down.
 #[tauri::command]
 pub async fn ensure_daemon(client: State<'_, DaemonClient>) -> Result<(), String> {
