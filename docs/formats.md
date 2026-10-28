@@ -55,6 +55,10 @@ media clock and the decoder.
 
 Windows rejects video sources. The error names the path.
 
+A compositor without `zwlr_layer_shell_v1` does not use this decoder for the
+desktop. GIF files, including those sent as `kind: image`, and video files
+follow the GNOME path in [platforms.md](platforms.md).
+
 ## Web
 
 The webview navigates to `iris://wallpaper/index.html`, or to the relative
