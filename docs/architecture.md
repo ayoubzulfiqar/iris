@@ -82,7 +82,8 @@ wgpu 23 `Device` and `Queue` are `Arc`, shared across outputs.
 
 ## Slots
 
-A still image, a scene, or a Linux video file becomes a GPU slot. A web
+A still image, a scene, or a Linux video file on a layer-shell compositor
+becomes a GPU slot. Windows video and GIF play in WebView2 on the WorkerW. A web
 wallpaper does not. `loader` classifies `type: web` and a bare `index.html`
 before the GPU loader runs, and the daemon stores those instances beside the
 GPU slots. Status, pause, resume, clear, and pointer updates cover both.
