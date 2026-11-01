@@ -23,7 +23,7 @@ use iris_scene::{AudioEngine, ScenePackage, SceneRuntime};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::error::Error;
-use crate::load::{load_source, load_wallpaper, prepare_scene, Loaded};
+use crate::load::{load_source, prepare_scene};
 
 struct Slot {
     surface: WallpaperSurface,
@@ -470,6 +470,16 @@ impl App {
     }
 
     fn apply(&mut self, config: WallpaperConfig) -> Result<ResponseBody, Error> {
+        if let Some(project) = animated_project(&config)? {
+            let result = self.apply_web(config, project)?;
+            let note = "Playing behind the desktop icons.";
+            for slot in self.webs.values_mut() {
+                if slot.state == RunState::Playing {
+                    slot.message = Some(note.to_owned());
+                }
+            }
+            return Ok(result);
+        }
         if let Some(project) = crate::loader::web_project(&config.source)? {
             return self.apply_web(config, project);
         }
@@ -944,16 +954,27 @@ enum Prep {
     Scene(iris_scene::Tick),
 }
 
+fn animated_project(config: &WallpaperConfig) -> Result<Option<iris_web::WebProject>, Error> {
+    let path = match &config.source {
+        WallpaperSource::Video { path } => path.as_path(),
+        WallpaperSource::Image { path } if is_gif(path) => path.as_path(),
+        _ => return Ok(None),
+    };
+    let project = if is_gif(path) {
+        crate::desktop_bg::gif_project(path, config)?
+    } else {
+        crate::desktop_bg::video_project(path, config)?
+    };
+    Ok(Some(project))
+}
+
+fn is_gif(path: &std::path::Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("gif"))
+}
+
 fn load_asset(config: &WallpaperConfig) -> Result<Asset, Error> {
-    if let WallpaperSource::Video { .. } = &config.source {
-        return match load_wallpaper(&config.source) {
-            Ok(Loaded::Still(texture)) => Err(Error::Unsupported(format!(
-                "video decoded {}x{} without a windows player",
-                texture.width, texture.height
-            ))),
-            Err(err) => Err(err),
-        };
-    }
     match prepare_scene(&config.source)? {
         Some(package) => {
             let package = Arc::new(package);
