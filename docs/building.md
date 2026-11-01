@@ -62,11 +62,10 @@ Adjust the directory to wherever `libclang.so` lives.
 The supported check target in this tree is `x86_64-pc-windows-gnu`. A native
 Windows build of the manager needs the
 [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) runtime.
-The daemon presents with Win32 and does not use WebView2 until a web wallpaper
-is applied.
-
-Video decode is not compiled on Windows. `iris_video::supported()` is `false`
-there, and applying a video source returns an unsupported IPC error.
+The daemon presents with Win32. Still images and scenes use wgpu. Video and
+GIF play in WebView2, and that window is reparented onto the WorkerW behind
+the desktop icons. FFmpeg decode stays Linux-only. `iris_video::supported()`
+is `false` on Windows.
 
 ## Release binaries
 
