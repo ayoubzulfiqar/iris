@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Iris">
+  <defs>
+    <linearGradient id="bg" x1="160" y1="80" x2="880" y2="960" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7A70FF"/>
+      <stop offset="0.55" stop-color="#4C3FE0"/>
+      <stop offset="1" stop-color="#24186F"/>
+    </linearGradient>
+    <radialGradient id="iris" cx="512" cy="480" r="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F6F4FF"/>
+      <stop offset="0.42" stop-color="#9A90FF"/>
+      <stop offset="1" stop-color="#1B1454"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <circle cx="512" cy="512" r="292" fill="none" stroke="#F4F2FF" stroke-width="28" opacity="0.92"/>
+  <circle cx="512" cy="512" r="176" fill="url(#iris)"/>
+  <circle cx="512" cy="512" r="62" fill="#100D22"/>
+  <circle cx="468" cy="470" r="20" fill="#FFFFFF"/>
+</svg>
