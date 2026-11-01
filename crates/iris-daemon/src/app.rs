@@ -831,17 +831,11 @@ impl App {
         targets: &[OutputSnapshot],
     ) -> Result<ResponseBody, Error> {
         if let Some(path) = video_path(&config).map(|path| path.to_path_buf()) {
-            let project = if is_gif(&path) {
-                crate::desktop_bg::gif_project(&path, &config)?
-            } else {
-                crate::desktop_bg::video_project(&path, &config)?
-            };
-            return self.play_animated(config, project);
+            return self.play_live(config, path.as_path(), targets);
         }
         if let Some(path) = image_path(&config).map(|path| path.to_path_buf()) {
             if is_gif(&path) {
-                let project = crate::desktop_bg::gif_project(&path, &config)?;
-                return self.play_animated(config, project);
+                return self.play_live(config, path.as_path(), targets);
             }
             return self.apply_still_background(config, &path, targets);
         }
@@ -851,22 +845,36 @@ impl App {
         ))
     }
 
-    /// Video and GIF play in a desktop window. The Iris GNOME extension lowers
-    /// that window behind other windows. The daemon keeps it up after the
-    /// manager process exits.
-    fn play_animated(
+    /// Video and GIF play in a hidden surface. The Shell extension clones that
+    /// surface onto the desktop background actor. The surface itself is parked
+    /// off-screen, so it is not a window on the desktop.
+    fn play_live(
         &mut self,
         config: WallpaperConfig,
-        project: iris_web::WebProject,
+        path: &std::path::Path,
+        _targets: &[OutputSnapshot],
     ) -> Result<ResponseBody, Error> {
         if !crate::desktop_bg::shell_extension_ready() {
             return Err(Error::Unsupported(
-                "GNOME is still running the old wallpaper extension, so a video would only open as a borderless window. Log out and back in once. Iris will then place the video on the desktop background.".to_owned(),
+                "Log out and back in once. Iris will then show the video as the desktop background, not as a window.".to_owned(),
             ));
         }
-        self.clear_desktop()?;
+        if !path.is_file() {
+            return Err(Error::Load(format!(
+                "wallpaper file is missing: {}",
+                path.display()
+            )));
+        }
+        crate::desktop_bg::clear_live();
+        let project = if is_gif(path) {
+            crate::desktop_bg::gif_project(path, &config)?
+        } else {
+            crate::desktop_bg::video_project(path, &config)?
+        };
+        self.web_broadcast = None;
+        self.webs.clear();
         let result = self.apply_web(config.clone(), project)?;
-        let note = "Playing as the desktop wallpaper. Stop Wallpaper in the Iris tray removes it.";
+        let note = "Playing as the desktop background. Stop Wallpaper in the tray removes it.";
         for slot in self.webs.values_mut() {
             if slot.state == RunState::Playing {
                 slot.message = Some(note.to_owned());
@@ -884,6 +892,7 @@ impl App {
     ) -> Result<ResponseBody, Error> {
         self.web_broadcast = None;
         self.webs.clear();
+        crate::desktop_bg::clear_live();
         let output = targets
             .iter()
             .find(|snapshot| snapshot.primary)
@@ -919,6 +928,7 @@ impl App {
     }
 
     fn clear_desktop(&mut self) -> Result<(), Error> {
+        crate::desktop_bg::clear_live();
         if self.desktop.is_none() {
             return Ok(());
         }
