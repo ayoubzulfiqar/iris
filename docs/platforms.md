@@ -9,7 +9,7 @@ daemon returns an unsupported error there.
 | --- | --- | --- |
 | Still image and `.pkg` preview | Yes | Yes |
 | Scene graph and particles | Yes | Yes |
-| Video decode | VA-API, then NVDEC, then software FFmpeg | Unsupported |
+| Video and GIF | FFmpeg on a GPU layer when layer-shell exists; otherwise the Shell extension | WebView2 on the WorkerW behind the icons |
 | Audio spectrum | cpal capture | WASAPI loopback into the same engine |
 | Web wallpaper | WebKitGTK via `wry` | WebView2 via `wry` |
 | Desktop placement | `zwlr_layer_shell_v1` background layer | WorkerW behind the icons |
@@ -35,9 +35,10 @@ unsupported and does not create a window. Scenes still need layer-shell.
 An HTML wallpaper (`type: web`) still opens a GTK webview. On Wayland the
 desktop type hint is advisory and the compositor chooses the position.
 
-A Windows shell that never creates the wallpaper WorkerW logs an injection
-warning. The borderless window remains. `embed_window` reports the same miss
-for a webview child.
+On Windows, video and GIF are staged for WebView2 and that view is reparented
+onto the WorkerW behind the desktop icons. A shell that never creates the
+WorkerW logs an injection warning. The window then stays borderless.
+`embed_window` reports the same miss for a webview child.
 
 ## Linux present loop
 
