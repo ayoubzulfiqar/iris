@@ -162,9 +162,12 @@ function App() {
       }}
     >
       <aside className="flex w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-        <div className="px-5 py-5">
-          <p className="text-lg font-semibold tracking-tight">Iris</p>
-          <p className="text-xs text-muted-foreground">Live wallpaper</p>
+        <div className="flex items-center gap-3 px-5 py-5">
+          <img src="/logo.svg" alt="" width={36} height={36} className="size-9 rounded-lg" />
+          <div>
+            <p className="text-lg font-semibold tracking-tight">Iris</p>
+            <p className="text-xs text-muted-foreground">Live wallpaper</p>
+          </div>
         </div>
         <nav className="flex flex-col gap-1 px-3">
           {pages.map((item) => (
