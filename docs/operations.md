@@ -85,8 +85,8 @@ Per-output results:
 | --- | --- |
 | Image, scene, or Linux video decodes | GPU slot, state `playing` |
 | Web document opens | Web slot, state `playing` |
+| Video or GIF on Windows | WebView2 slot on the WorkerW, state `playing` |
 | Webview fails after the software retry | Slot state `failed`, IPC error, daemon stays up |
-| Video on Windows | IPC unsupported error, no slot |
 | No decodable image in a non-web directory | IPC load error |
 
 Pause and resume accept a target or every output. A user pause is remembered.
