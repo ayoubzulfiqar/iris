@@ -2,8 +2,8 @@
 //!
 //! GNOME's compositor does not advertise layer-shell, so a GPU surface cannot
 //! sit behind the icons. A still image is applied with `gsettings` on
-//! `org.gnome.desktop.background`. Video and GIF are staged for the desktop
-//! webview; the Iris Shell extension lowers that window behind other windows.
+//! `org.gnome.desktop.background`. Video and GIF are drawn by the Shell
+//! extension on the background group. No wallpaper window is created.
 //! The previous background and the active wallpaper are stored under
 //! `$XDG_STATE_HOME/iris`.
 
@@ -518,8 +518,8 @@ fn quote_gvariant(value: &str) -> String {
     quoted
 }
 
-/// The Shell extension writes this after it loads the background-group build.
-const EXTENSION_STAMP: &str = "background-group-1";
+/// The Shell extension writes this after it can draw video itself, with no window.
+const EXTENSION_STAMP: &str = "clone-background-3";
 
 /// True when this login loaded the extension that moves video into the desktop background.
 pub(crate) fn shell_extension_ready() -> bool {
@@ -552,6 +552,59 @@ fn state_path() -> PathBuf {
 
 fn active_path() -> PathBuf {
     state_dir().join("active-wallpaper.json")
+}
+
+fn live_path() -> PathBuf {
+    state_dir().join("gnome-live.json")
+}
+
+#[derive(Serialize)]
+struct LiveWallpaper {
+    path: String,
+    muted: bool,
+    #[serde(rename = "loop")]
+    loop_playback: bool,
+    volume: f32,
+    rate: f32,
+}
+
+/// Tell the Shell extension which file to draw on the desktop background.
+///
+/// The extension paints the frames itself. No GTK window is created.
+pub(crate) fn publish_live(source: &Path, config: &WallpaperConfig) -> Result<(), Error> {
+    if !source.is_file() {
+        return Err(Error::Load(format!(
+            "wallpaper file is missing: {}",
+            source.display()
+        )));
+    }
+    let path = live_path();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| Error::Io(format!("{}: {err}", parent.display())))?;
+    }
+    let live = LiveWallpaper {
+        path: source.to_string_lossy().into_owned(),
+        muted: config.playback.muted,
+        loop_playback: config.playback.looping,
+        volume: config.volume,
+        rate: config.playback.rate,
+    };
+    let bytes = serde_json::to_vec_pretty(&live)
+        .map_err(|err| Error::Load(format!("save live wallpaper: {err}")))?;
+    let temporary = path.with_extension("json.tmp");
+    fs::write(&temporary, bytes)
+        .map_err(|err| Error::Io(format!("{}: {err}", temporary.display())))?;
+    fs::rename(&temporary, &path).map_err(|err| Error::Io(format!("{}: {err}", path.display())))?;
+    Ok(())
+}
+
+/// Stop the Shell extension's desktop video.
+pub(crate) fn clear_live() {
+    let path = live_path();
+    if path.is_file() {
+        let _ = fs::remove_file(path);
+    }
 }
 
 fn clip_name(path: &Path) -> &'static str {
@@ -646,7 +699,7 @@ mod tests {
 
     #[test]
     fn extension_stamp_requires_the_background_group_build() {
-        assert!(extension_stamp_ready("background-group-1\n"));
+        assert!(extension_stamp_ready("clone-background-3\n"));
         assert!(!extension_stamp_ready(""));
         assert!(!extension_stamp_ready("old\n"));
     }
