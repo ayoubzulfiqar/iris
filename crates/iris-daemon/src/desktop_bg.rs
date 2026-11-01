@@ -372,16 +372,17 @@ clip.play();
 }
 
 fn video_stage_dir() -> PathBuf {
-    let base = match std::env::var_os("XDG_CACHE_HOME") {
-        Some(path) if !path.is_empty() => PathBuf::from(path),
-        _ => {
-            let home = std::env::var_os("HOME")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from("/tmp"));
-            home.join(".cache")
-        }
-    };
-    base.join("iris").join("video-wallpaper")
+    if let Some(path) = std::env::var_os("XDG_CACHE_HOME").filter(|path| !path.is_empty()) {
+        return PathBuf::from(path).join("iris").join("video-wallpaper");
+    }
+    if let Some(path) = std::env::var_os("LOCALAPPDATA").filter(|path| !path.is_empty()) {
+        return PathBuf::from(path).join("iris").join("video-wallpaper");
+    }
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    home.join(".cache").join("iris").join("video-wallpaper")
 }
 
 fn fit_css(scale: ScaleMode) -> &'static str {
@@ -408,8 +409,13 @@ pub(crate) fn file_uri(path: &Path) -> Result<String, Error> {
     let absolute = path
         .canonicalize()
         .map_err(|err| Error::Io(format!("{}: {err}", path.display())))?;
+    let text = absolute.to_string_lossy();
+    let text = text.strip_prefix(r"\\?\").unwrap_or(&text).replace('\\', "/");
     let mut uri = String::from("file://");
-    for &byte in std::os::unix::ffi::OsStrExt::as_bytes(absolute.as_os_str()) {
+    if !text.starts_with('/') {
+        uri.push('/');
+    }
+    for &byte in text.as_bytes() {
         match byte {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'/' | b'-' | b'_' | b'.' | b'~' => {
                 uri.push(byte as char);
