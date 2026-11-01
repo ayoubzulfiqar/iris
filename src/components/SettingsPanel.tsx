@@ -148,6 +148,12 @@ export function SettingsPanel({ settings, onChange }: SettingsPanelProps) {
           Pause while a game is in front
         </label>
       </section>
+
+      <section className="space-y-2 rounded-xl border border-border bg-card p-5 text-sm shadow-sm">
+        <h2 className="text-sm font-semibold">Shortcuts</h2>
+        <p className="text-muted-foreground">Ctrl or Command Enter sets the selected wallpaper.</p>
+        <p className="text-muted-foreground">Ctrl or Command Right Arrow plays the next playlist wallpaper.</p>
+      </section>
     </div>
   );
 }

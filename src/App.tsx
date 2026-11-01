@@ -8,11 +8,20 @@ import { PreviewCard } from "./components/PreviewCard";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { useMonitors } from "./hooks/useMonitors";
 import { useWallpaper } from "./hooks/useWallpaper";
-import { loadSettings, saveSettings, type ManagerSettings } from "./settings";
+import { PlaylistPanel } from "./components/PlaylistPanel";
+import {
+  loadSettings,
+  nextPlaylistIndex,
+  rememberWallpaper,
+  saveSettings,
+  toggleSaved,
+  type ManagerSettings,
+  type SavedWallpaper,
+} from "./settings";
 import type { Inspection, MonitorTarget, WallpaperConfig } from "./types";
 import { sourceFor, targetLabel } from "./types";
 
-type Page = "library" | "displays" | "import" | "settings";
+type Page = "library" | "playlist" | "displays" | "import" | "settings";
 
 function parseOptionalFps(value: string, label: string): number | null {
   const trimmed = value.trim();
@@ -26,6 +35,7 @@ function parseOptionalFps(value: string, label: string): number | null {
 
 const pages: { id: Page; label: string }[] = [
   { id: "library", label: "Library" },
+  { id: "playlist", label: "Playlist" },
   { id: "displays", label: "Displays" },
   { id: "import", label: "Import" },
   { id: "settings", label: "Settings" },
@@ -41,6 +51,9 @@ function App() {
   const [formError, setFormError] = useState<string | null>(null);
   const pointerAt = useRef(0);
   const [telemetry, setTelemetry] = useState("");
+  const playlistIndex = useRef(0);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   useEffect(() => {
     saveSettings(settings);
@@ -110,41 +123,101 @@ function App() {
     }
   }
 
-  async function onApply() {
-    if (!inspection) {
-      setFormError("Choose a wallpaper first.");
-      return;
-    }
-    const source = sourceFor(inspection.kind, inspection.path);
-    if (!source || inspection.kind === "directory") {
-      setFormError("Choose a package, scene folder, image, or video.");
+  function savedFromInspection(item: { path: string; kind: string; title: string }): SavedWallpaper {
+    return { path: item.path, kind: item.kind, title: item.title || item.path };
+  }
+
+  async function applySaved(item: SavedWallpaper, active = settingsRef.current) {
+    const source = sourceFor(item.kind, item.path);
+    if (!source) {
+      setFormError("That wallpaper type cannot be applied.");
       return;
     }
     let fps: number | null;
     let battery: number | null;
     try {
-      fps = parseOptionalFps(settings.fpsCap, "FPS cap");
-      battery = parseOptionalFps(settings.batteryFps, "Battery FPS");
+      fps = parseOptionalFps(active.fpsCap, "FPS cap");
+      battery = parseOptionalFps(active.batteryFps, "Battery FPS");
     } catch (err) {
       setFormError(errorText(err));
       return;
     }
     setFormError(null);
     const config: WallpaperConfig = {
-      id: `local:${inspection.path}`,
+      id: `local:${item.path}`,
       source,
       target: scope,
-      playback: { rate: settings.rate, looping: settings.looping, muted: settings.muted },
-      audio_reactive: settings.audioReactive,
-      volume: settings.volume,
+      playback: { rate: active.rate, looping: active.looping, muted: active.muted },
+      audio_reactive: active.audioReactive,
+      volume: active.volume,
       fps_cap: fps,
-      scale: settings.scale,
-      pause_on_fullscreen: settings.pauseOnFullscreen,
-      pause_on_game: settings.pauseOnGame,
+      scale: active.scale,
+      pause_on_fullscreen: active.pauseOnFullscreen,
+      pause_on_game: active.pauseOnGame,
       battery_fps: battery,
     };
+    setSettings((current) => ({
+      ...current,
+      recent: rememberWallpaper(current.recent, item, 12),
+    }));
     await runControl(() => wallpaper.apply(scope, config));
   }
+
+  async function onApply() {
+    if (!inspection) {
+      setFormError("Choose a wallpaper first.");
+      return;
+    }
+    if (inspection.kind === "directory") {
+      setFormError("Choose a package, scene folder, image, or video.");
+      return;
+    }
+    await applyOne(savedFromInspection(inspection));
+  }
+
+  async function applyOne(item: SavedWallpaper) {
+    setSettings((current) => ({ ...current, playlistEnabled: false }));
+    await applySaved(item);
+  }
+
+  function playNext() {
+    const active = settingsRef.current;
+    if (active.playlist.length === 0) return;
+    const index = nextPlaylistIndex(
+      active.playlist.length,
+      playlistIndex.current,
+      active.shufflePlaylist,
+    );
+    playlistIndex.current = index;
+    const item = active.playlist[index];
+    if (item) void applySaved(item, active);
+  }
+
+  useEffect(() => {
+    if (!settings.playlistEnabled || settings.playlist.length === 0) return;
+    const seconds = Math.max(5, settings.playlistSeconds || settings.playlistMinutes * 60);
+    const timer = window.setInterval(() => playNext(), seconds * 1000);
+    return () => window.clearInterval(timer);
+  }, [settings.playlistEnabled, settings.playlistSeconds, settings.playlistMinutes, settings.playlist.length, settings.shufflePlaylist]);
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        void onApply();
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === "ArrowRight") {
+        event.preventDefault();
+        playNext();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const applyBlocked = wallpaper.pending || !inspection || inspection.kind === "directory";
 
@@ -220,8 +293,40 @@ function App() {
               <LibraryView
                 selectedPath={inspection?.path ?? null}
                 initialPath={settings.libraryPath}
+                favoritePaths={settings.favorites.map((item) => item.path)}
                 onInspect={onInspect}
-                onApply={() => void onApply()}
+                onApplyEntry={(entry) => {
+                  if (entry.kind === "directory") return;
+                  void applyOne({ path: entry.path, kind: entry.kind, title: entry.name });
+                }}
+                onToggleFavorite={(entry) => {
+                  setSettings((current) => ({
+                    ...current,
+                    favorites: toggleSaved(current.favorites, {
+                      path: entry.path,
+                      kind: entry.kind,
+                      title: entry.name,
+                    }),
+                  }));
+                }}
+                onStartSlideshow={(items, everySeconds) => {
+                  const playlist = items.map((entry) => ({
+                    path: entry.path,
+                    kind: entry.kind,
+                    title: entry.name,
+                  }));
+                  playlistIndex.current = 0;
+                  setSettings((current) => ({
+                    ...current,
+                    playlist,
+                    playlistEnabled: true,
+                    playlistSeconds: everySeconds,
+                    playlistMinutes: Math.max(1, Math.round(everySeconds / 60)),
+                  }));
+                  const first = playlist[0];
+                  if (first) void applySaved(first);
+                  setFormError(null);
+                }}
                 applyPending={wallpaper.pending}
               />
               <aside className="sticky top-0 space-y-3">
@@ -251,6 +356,20 @@ function App() {
                 </div>
               </aside>
             </div>
+          ) : null}
+          {page === "playlist" ? (
+            <PlaylistPanel
+              settings={settings}
+              current={
+                inspection && inspection.kind !== "directory"
+                  ? { path: inspection.path, kind: inspection.kind, title: inspection.title || inspection.path }
+                  : null
+              }
+              onChange={setSettings}
+              pending={wallpaper.pending}
+              onPlay={(item) => void applySaved(item)}
+              onNext={playNext}
+            />
           ) : null}
           {page === "displays" ? (
             <div className="space-y-4">
