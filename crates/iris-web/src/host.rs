@@ -156,7 +156,10 @@ mod platform {
         // only recognises the IrisWallpaper prefix, so put the title back.
         let locked = title.clone();
         window.connect_notify(Some("title"), move |window, _| {
-            let current = window.title().map(|text| text.to_string()).unwrap_or_default();
+            let current = window
+                .title()
+                .map(|text| text.to_string())
+                .unwrap_or_default();
             if current != locked {
                 window.set_title(&locked);
             }
@@ -255,6 +258,12 @@ mod platform {
                 "--disable-gpu --disable-gpu-compositing",
             );
         }
+        // WebView2 blocks autoplay unless this policy is set. Video wallpapers
+        // have no click to start them.
+        std::env::set_var(
+            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+            "--autoplay-policy=no-user-gesture-required",
+        );
         let window = iris_backend_windows::DesktopWindow::open(
             bounds.x,
             bounds.y,
@@ -272,12 +281,13 @@ mod platform {
         let init = crate::bridge::properties_script(&project.properties, &project.general);
         let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let mut builder = webview_builder(&mut context, root, &entry, init.clone(), bounds)?;
-            if software {
-                use wry::WebViewBuilderExtWindows;
-                builder = builder.with_additional_browser_args(
-                    "--disable-gpu --disable-gpu-compositing --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required",
-                );
-            }
+            use wry::WebViewBuilderExtWindows;
+            let browser_args = if software {
+                "--disable-gpu --disable-gpu-compositing --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required"
+            } else {
+                "--autoplay-policy=no-user-gesture-required"
+            };
+            builder = builder.with_additional_browser_args(browser_args);
             let view = builder
                 .build_as_child(&native)
                 .map_err(|err| err.to_string())?;
