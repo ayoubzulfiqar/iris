@@ -65,6 +65,13 @@ Linux listens on `$XDG_RUNTIME_DIR/iris/iris.sock`, or `/tmp/iris-$UID.sock`
 when `XDG_RUNTIME_DIR` is unset. Windows listens on `\\.\pipe\iris-ipc-{user}`.
 Details, limits, and recovery are in [docs/operations.md](docs/operations.md).
 
+## Release binaries
+
+Pushing a `v*` tag runs [`.github/workflows/binaries.yml`](.github/workflows/binaries.yml).
+It builds `iris` and `iris-daemon` for Linux x86_64 and Windows x86_64 and
+attaches them to the GitHub release. macOS is not built. Details are in
+[docs/building.md](docs/building.md).
+
 ## Verify
 
 Run one Cargo command at a time:
