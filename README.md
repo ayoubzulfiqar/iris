@@ -1,7 +1,11 @@
 # Iris
 
+<p align="center">
+  <img src="src-tauri/icons/icon.png" alt="Iris app icon" width="128">
+</p>
+
 Iris is a live-wallpaper engine for Linux and Windows. A daemon presents still
-images, Wallpaper Engine packages, scenes, Linux video, and HTML wallpapers
+images, Wallpaper Engine packages, scenes, video, GIF, and HTML wallpapers
 behind the desktop. A Tauri manager applies them, pauses them, and reads
 system telemetry. The manager does not render.
 
@@ -13,7 +17,7 @@ See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 | Platform | Presentation | Video | Web |
 | --- | --- | --- | --- |
 | Linux (`x86_64-unknown-linux-gnu`) | Wayland layer-shell, paced by `wl_surface.frame` | VA-API, NVDEC, then software | WebKitGTK |
-| Windows (`x86_64-pc-windows-gnu`) | Borderless window on the desktop WorkerW | Not in this version | WebView2 |
+| Windows (`x86_64-pc-windows-gnu`) | Borderless window on the desktop WorkerW | WebView2, behind the icons | WebView2 |
 | macOS | No backend | No backend | No backend |
 
 This is a desktop product for the user who starts it. It is not a multi-tenant
