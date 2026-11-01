@@ -68,6 +68,25 @@ is applied.
 Video decode is not compiled on Windows. `iris_video::supported()` is `false`
 there, and applying a video source returns an unsupported IPC error.
 
+## Release binaries
+
+`.github/workflows/binaries.yml` builds the manager and `iris-daemon` for the
+two platforms that have a wallpaper backend:
+
+| Runner | Binaries |
+| --- | --- |
+| `ubuntu-24.04` | `iris`, `iris-daemon`, and a `.deb` |
+| `windows-latest` | `iris.exe`, `iris-daemon.exe`, and an NSIS installer |
+
+The workflow runs when a `v*` tag is pushed, and when someone starts it by
+hand. A tag also publishes those files on the GitHub release. macOS is not
+built. This version has no wallpaper backend there.
+
+The Linux job installs GTK 3, WebKit2GTK 4.1, Wayland, ALSA, and FFmpeg from
+Ubuntu packages, so it does not need `.sysdeps/`. The Windows job uses the
+MSVC toolchain on the GitHub runner. That is the binary users run. The
+`x86_64-pc-windows-gnu` target remains the local cross-check.
+
 ## Frontend
 
 From the repository root:
