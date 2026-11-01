@@ -53,7 +53,9 @@ then a software decoder. Frames are YUV or NV12 planes. The renderer converts
 them. Playback rate, looping, and mute come from `playback`. Pause freezes the
 media clock and the decoder.
 
-Windows rejects video sources. The error names the path.
+Windows does not use this decoder. Video and GIF play in WebView2 on the
+WorkerW behind the desktop icons. GIF files sent as `kind: image` take that
+path too.
 
 A compositor without `zwlr_layer_shell_v1` does not use this decoder for the
 desktop. GIF files, including those sent as `kind: image`, and video files
